@@ -15,7 +15,9 @@ const url = "https://prod2.seace.gob.pe/seacebus-uiwd-pub/buscadorPublico/buscad
 const startDateSelector = "tbBuscador:idFormBuscarProceso:dfechaInicio_input"
 const endDateSelector = "tbBuscador:idFormBuscarProceso:dfechaFin_input"
 const searchButtonSelector = "tbBuscador:idFormBuscarProceso:btnBuscarSelToken"
-const retrievedRowsDataContainer = ".ui-paginator-current"
+const retrievedRowsDataContainerSelector = ".ui-paginator-current"
+const advancedSearchSelector = ".ui-fieldset-legend"
+const selectRowButton = "tbBuscador:idFormBuscarProceso:dtProcesos:%d:j_idt240"
 
 func Start(date time.Time) {
 	fmt.Printf("Process initialized for date: %s\n", date.Format("2006-01-02"))
@@ -55,6 +57,10 @@ func Start(date time.Time) {
 	}
 
 	fmt.Printf("Total amount of rows obtained: %d\n", recordsObtained)
+
+	for i := 0; i < int(recordsObtained); i++ {
+		driver.Quit
+	}
 }
 
 func setupDriver() (selenium.WebDriver, error) {
@@ -81,8 +87,18 @@ func setupDriver() (selenium.WebDriver, error) {
 }
 
 func fillDates(driver selenium.WebDriver, date time.Time) error {
-	formattedDate := date.Format("02/01/2006")
+	advancedSearchButton, err := driver.FindElement(selenium.ByCSSSelector, advancedSearchSelector)
+	if err != nil {
+		return fmt.Errorf("couldn't obtain the advanced search button:\n%w", err)
+	}
 
+	err = advancedSearchButton.Click()
+	if err != nil {
+		return fmt.Errorf("couldn't click the advanced search button:\n%w", err)
+	}
+
+	time.Sleep(2 * time.Second)
+	formattedDate := date.Format("02/01/2006")
 	startDateSelector, err := driver.FindElement(selenium.ByID, startDateSelector)
 	if err != nil {
 		return fmt.Errorf("couldn't obtain the start date selector:\n%w", err)
@@ -92,6 +108,7 @@ func fillDates(driver selenium.WebDriver, date time.Time) error {
 		return fmt.Errorf("couldn't set the start date value:\n%w", err)
 	}
 
+	time.Sleep(2 * time.Second)
 	endDateSelector, err := driver.FindElement(selenium.ByID, endDateSelector)
 	if err != nil {
 		return fmt.Errorf("couldn't obtain the end date selector:\n%w", err)
@@ -114,7 +131,7 @@ func fillDates(driver selenium.WebDriver, date time.Time) error {
 }
 
 func findTotalAmountOfRows(driver selenium.WebDriver) (int64, error) {
-	retrievedRowsData, err := driver.FindElement(selenium.ByCSSSelector, retrievedRowsDataContainer)
+	retrievedRowsData, err := driver.FindElement(selenium.ByCSSSelector, retrievedRowsDataContainerSelector)
 	if err != nil {
 		return 0, fmt.Errorf("couldn't obtain the retrieved rows container:\n%s", err)
 	}
@@ -148,6 +165,13 @@ func takeScreenshot(driver selenium.WebDriver) error {
 	if err != nil {
 		return fmt.Errorf("failed to write screen shot: \n%s", err)
 	}
+
+	return nil
+}
+
+func selectElement(driver selenium.WebElement, id int64) error {
+	id := fmt.Sprintf(selectRowButton, id)
+	driver.FindElement(selenium.ByID)
 
 	return nil
 }
