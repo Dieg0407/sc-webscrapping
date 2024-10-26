@@ -23,7 +23,7 @@ func Start(date time.Time) {
 	// initialize the selenium
 	service, err := selenium.NewChromeDriverService("chromedriver", 4444)
 	if err != nil {
-		fmt.Printf("Failed to start the selenium service: %v", err)
+		fmt.Printf("Failed to start the selenium service:\n%v", err)
 		return
 	}
 
@@ -31,13 +31,13 @@ func Start(date time.Time) {
 
 	driver, err := setupDriver()
 	if err != nil {
-		fmt.Printf("Failed to open the browser: %v", err)
+		fmt.Printf("Failed to open the browser:\n%v", err)
 		return
 	}
 
 	err = fillDates(driver, date)
 	if err != nil {
-		fmt.Printf("Failed to fill dates: %v", err)
+		fmt.Printf("Failed to fill dates:\n%v", err)
 		return
 	}
 
@@ -45,12 +45,12 @@ func Start(date time.Time) {
 	time.Sleep(10 * time.Second)
 	err = takeScreenshot(driver)
 	if err != nil {
-		fmt.Printf("Failed to take screenshot: %v", err)
+		fmt.Printf("Failed to take screenshot:\n%v", err)
 	}
 
 	recordsObtained, err := findTotalAmountOfRows(driver)
 	if err != nil {
-		fmt.Printf("Failed to find total amount of rows: %v", err)
+		fmt.Printf("Failed to find total amount of rows:\n%v", err)
 		return
 	}
 
@@ -82,31 +82,32 @@ func setupDriver() (selenium.WebDriver, error) {
 
 func fillDates(driver selenium.WebDriver, date time.Time) error {
 	formattedDate := date.Format("02/01/2006")
+
 	startDateSelector, err := driver.FindElement(selenium.ByID, startDateSelector)
 	if err != nil {
-		return fmt.Errorf("error :%s", err)
+		return fmt.Errorf("couldn't obtain the start date selector:\n%w", err)
 	}
 	err = startDateSelector.SendKeys(formattedDate)
 	if err != nil {
-		return fmt.Errorf("error :%s", err)
+		return fmt.Errorf("couldn't set the start date value:\n%w", err)
 	}
 
 	endDateSelector, err := driver.FindElement(selenium.ByID, endDateSelector)
 	if err != nil {
-		return fmt.Errorf("error :%s", err)
+		return fmt.Errorf("couldn't obtain the end date selector:\n%w", err)
 	}
 	err = endDateSelector.SendKeys(formattedDate)
 	if err != nil {
-		return fmt.Errorf("error :%s", err)
+		return fmt.Errorf("couldn't set the end date value:\n%w", err)
 	}
 
 	button, err := driver.FindElement(selenium.ByID, searchButtonSelector)
 	if err != nil {
-		return fmt.Errorf("error :%s", err)
+		return fmt.Errorf("couldn't obtain the search button:\n%w", err)
 	}
 	err = button.Click()
 	if err != nil {
-		return fmt.Errorf("error :%s", err)
+		return fmt.Errorf("couldn't click the search button:\n%w", err)
 	}
 
 	return nil
@@ -115,23 +116,23 @@ func fillDates(driver selenium.WebDriver, date time.Time) error {
 func findTotalAmountOfRows(driver selenium.WebDriver) (int64, error) {
 	retrievedRowsData, err := driver.FindElement(selenium.ByCSSSelector, retrievedRowsDataContainer)
 	if err != nil {
-		return 0, fmt.Errorf("error :%s", err)
+		return 0, fmt.Errorf("couldn't obtain the retrieved rows container:\n%s", err)
 	}
 
 	text, err := retrievedRowsData.Text()
 	if err != nil {
-		return 0, fmt.Errorf("error :%s", err)
+		return 0, fmt.Errorf("couldn't obtain text data from the retrieved rows container:\n%s", err)
 	}
 
 	parts := strings.Fields(text)
 	if len(parts) < 8 {
-		return 0, fmt.Errorf("Couldn't extract the total amount of rows from the container: %s", text)
+		return 0, fmt.Errorf("couldn't extract the total amount of rows from the container:\n%s", text)
 	}
 
 	part := parts[8]
 	total, err := strconv.ParseInt(part, 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("error :%s", err)
+		return 0, fmt.Errorf("failed to parse total amount of retrived rows:\n%s", err)
 	}
 
 	return total, nil
@@ -140,12 +141,12 @@ func findTotalAmountOfRows(driver selenium.WebDriver) (int64, error) {
 func takeScreenshot(driver selenium.WebDriver) error {
 	screenshot, err := driver.Screenshot()
 	if err != nil {
-		return fmt.Errorf("error :%s", err)
+		return fmt.Errorf("driver failed to take screenshot:\n%s", err)
 	}
 
 	err = os.WriteFile("/tmp/screenshot.png", screenshot, 0644)
 	if err != nil {
-		return fmt.Errorf("error :%s", err)
+		return fmt.Errorf("failed to write screen shot: \n%s", err)
 	}
 
 	return nil
