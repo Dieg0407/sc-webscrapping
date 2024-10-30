@@ -19,6 +19,8 @@ const retrievedRowsDataContainerSelector = ".ui-paginator-current"
 const advancedSearchSelector = ".ui-fieldset-legend"
 const selectRowButton = "tbBuscador:idFormBuscarProceso:dtProcesos:%d:j_idt240"
 const goBackButton = "tbFicha:j_idt19"
+const nextPageButton = ".ui-paginator-next"
+const previousPageButton = ".ui-paginator-prev"
 
 func Start(date time.Time) {
 	fmt.Printf("Process initialized for date: %s\n", date.Format("2006-01-02"))
@@ -47,6 +49,13 @@ func Start(date time.Time) {
 	// sleep for 10s
 	time.Sleep(10 * time.Second)
 
+	// Scroll to the bottom of the page using JavaScript
+	_, err = driver.ExecuteScript("window.scrollTo(0, document.body.scrollHeight);", nil)
+	if err != nil {
+		fmt.Printf("Error scrolling to the bottom: %v", err)
+		return
+	}
+
 	recordsObtained, err := findTotalAmountOfRows(driver)
 	if err != nil {
 		fmt.Printf("Failed to find total amount of rows:\n%v", err)
@@ -54,14 +63,22 @@ func Start(date time.Time) {
 	}
 
 	fmt.Printf("Total amount of rows obtained: %d\n", recordsObtained)
+	takeScreenshot(driver, "/tmp/initial-ss.jpg")
 
 	for i := 0; i < int(recordsObtained); i++ {
 		println("Processing record: ", i+1)
-		selectElement(driver, i)
-		break
+		err = selectElement(driver, i)
+		if err != nil {
+			fmt.Printf("Failed to select element:\n%v", err)
+			break
+		}
+
+		if i > 20 {
+			break
+		}
 	}
 
-	err = takeScreenshot(driver)
+	err = takeScreenshot(driver, "/tmp/final-ss.jpg")
 	if err != nil {
 		fmt.Printf("Failed to take screenshot:\n%v", err)
 	}
@@ -159,13 +176,13 @@ func findTotalAmountOfRows(driver selenium.WebDriver) (int64, error) {
 	return total, nil
 }
 
-func takeScreenshot(driver selenium.WebDriver) error {
+func takeScreenshot(driver selenium.WebDriver, path string) error {
 	screenshot, err := driver.Screenshot()
 	if err != nil {
 		return fmt.Errorf("driver failed to take screenshot:\n%s", err)
 	}
 
-	err = os.WriteFile("/tmp/screenshot.png", screenshot, 0644)
+	err = os.WriteFile(path, screenshot, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to write screen shot: \n%s", err)
 	}
@@ -174,25 +191,166 @@ func takeScreenshot(driver selenium.WebDriver) error {
 }
 
 func selectElement(driver selenium.WebDriver, id int) error {
+	err := goToPage(driver, calculatePageNumber(id))
+	if err != nil {
+		return fmt.Errorf("failed to go to the page %d:\n%s", calculatePageNumber(id), err)
+	}
+
 	formattedId := fmt.Sprintf(selectRowButton, id)
 	element, err := driver.FindElement(selenium.ByID, formattedId)
 	if err != nil {
-		return fmt.Errorf("failed to obtain the element with id %d:\n%s", id, err)
+		return fmt.Errorf("failed to obtain the element with id %d and raw id '%s':\n%s", id, formattedId, err)
 	}
 
 	err = element.Click()
 	if err != nil {
-		return fmt.Errorf("failed to click the element with id %d:\n%s", id, err)
+		return fmt.Errorf("failed to click the element with id %d and raw id '%s':\n%s", id, formattedId, err)
 	}
 
-	err = driver.WaitWithTimeout(func(wd selenium.WebDriver) (bool, error) {
-		_, err := wd.FindElement(selenium.ByID, goBackButton)
+	err = driver.WaitWithTimeout(waitForDetailsPageToLoad, 30*time.Second)
+	takeScreenshot(driver, fmt.Sprintf("/tmp/details-%d.jpg", id))
+	if err != nil {
+		return fmt.Errorf("failed to wait for the details page to load:\n%s", err)
+	}
+
+	// extract information
+
+	// go back
+	element, err = driver.FindElement(selenium.ByID, goBackButton)
+	if err != nil {
+		return fmt.Errorf("failed to obtain the go back button:\n%s", err)
+	}
+	err = element.Click()
+	if err != nil {
+		return fmt.Errorf("failed to click the go back button:\n%s", err)
+	}
+
+	err = driver.WaitWithTimeout(waitForMainPageToLoad, 30*time.Second)
+	takeScreenshot(driver, fmt.Sprintf("/tmp/after-details-%d.jpg", id))
+	if err != nil {
+		return fmt.Errorf("failed to wait for the main page to load:\n%s", err)
+	}
+
+	return nil
+}
+
+func waitForDetailsPageToLoad(wd selenium.WebDriver) (bool, error) {
+	_, err := wd.FindElement(selenium.ByID, goBackButton)
+	if err != nil {
+		return false, fmt.Errorf("failed to obtain the go to the details page:\n%s", err)
+	}
+
+	return true, nil
+}
+
+func waitForMainPageToLoad(wd selenium.WebDriver) (bool, error) {
+	_, err := wd.FindElement(selenium.ByCSSSelector, advancedSearchSelector)
+	if err != nil {
+		return false, fmt.Errorf("failed to obtain the go back to the main page:\n%s", err)
+	}
+
+	return true, nil
+}
+
+func calculatePageNumber(id int) int {
+	page := id / 15
+	page++
+
+	return page
+}
+
+func goToPage(driver selenium.WebDriver, page int) error {
+	paginator, err := driver.FindElements(selenium.ByCSSSelector, ".ui-paginator-page")
+	if err != nil {
+		return fmt.Errorf("failed to obtain the paginator elements:\n%s", err)
+	}
+
+	activePage := 0
+	for _, element := range paginator {
+		classNames, err := element.GetAttribute("class")
 		if err != nil {
-			return false, fmt.Errorf("failed to obtain the go back button element:\n%s", err)
+			return fmt.Errorf("failed to obtain the class names:\n%s", err)
 		}
 
-		return true, nil
-	}, 30*time.Second)
+		if !strings.Contains(classNames, "ui-state-active") {
+			continue
+		}
 
-	return err
+		text, err := element.Text()
+		if err != nil {
+			return fmt.Errorf("failed to obtain the text from the element:\n%s", err)
+		}
+
+		activePage, err = strconv.Atoi(text)
+		if err != nil {
+			return fmt.Errorf("failed to parse the active page number:\n%s", err)
+		}
+		break
+	}
+
+	if activePage == page {
+		return nil
+	}
+	if activePage < page {
+		// move forward
+		fmt.Println("moving forward")
+		err = clickNextPage(driver)
+		if err != nil {
+			return fmt.Errorf("failed to click the next page button:\n%s", err)
+		}
+		return goToPage(driver, page)
+	}
+
+	fmt.Println("moving backward")
+	err = clickPreviousPage(driver)
+	if err != nil {
+		return fmt.Errorf("failed to click the previous page button:\n%s", err)
+	}
+	return goToPage(driver, page)
+}
+
+func clickNextPage(driver selenium.WebDriver) error {
+	nextPage, err := driver.FindElement(selenium.ByCSSSelector, nextPageButton)
+	if err != nil {
+		return fmt.Errorf("failed to obtain the next page button:\n%s", err)
+	}
+
+	classNames, err := nextPage.GetAttribute("class")
+	if err != nil {
+		return fmt.Errorf("failed to obtain the class names:\n%s", err)
+	}
+
+	if strings.Contains(classNames, "ui-state-disabled") {
+		return fmt.Errorf("the next page button is disabled")
+	}
+
+	err = nextPage.Click()
+	if err != nil {
+		return fmt.Errorf("failed to click the next page button:\n%s", err)
+	}
+	time.Sleep(5 * time.Second)
+	return nil
+}
+
+func clickPreviousPage(driver selenium.WebDriver) error {
+	previousPage, err := driver.FindElement(selenium.ByCSSSelector, previousPageButton)
+	if err != nil {
+		return fmt.Errorf("failed to obtain the previous page button:\n%s", err)
+	}
+
+	classNames, err := previousPage.GetAttribute("class")
+	if err != nil {
+		return fmt.Errorf("failed to obtain the class names:\n%s", err)
+	}
+
+	if strings.Contains(classNames, "ui-state-disabled") {
+		return fmt.Errorf("the previous page button is disabled")
+	}
+
+	err = previousPage.Click()
+	if err != nil {
+		return fmt.Errorf("failed to click the previous page button:\n%s", err)
+	}
+	time.Sleep(5 * time.Second)
+	return nil
 }
