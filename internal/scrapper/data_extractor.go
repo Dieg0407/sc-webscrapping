@@ -22,7 +22,7 @@ type ExtractedInformation struct {
 }
 
 func extractData(driver selenium.WebDriver, id int) (ExtractedInformation, error) {
-	logger := log.New(os.Stdout, "[extractor]", 0)
+	logger := log.New(os.Stdout, "", 0)
 
 	nomenclature, err := extractNomenclature(driver)
 	if err != nil {
@@ -45,7 +45,7 @@ func extractNomenclature(driver selenium.WebDriver) (string, error) {
 	}
 
 	row := rows[0]
-	headerAndValue, err := row.FindElements(selenium.ByCSSSelector, ".gridcell")
+	headerAndValue, err := row.FindElements(selenium.ByTagName, "td")
 	if err != nil {
 		return "", err
 	}
