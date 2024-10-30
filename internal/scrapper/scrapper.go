@@ -59,7 +59,7 @@ func Start(date time.Time) {
 	fmt.Printf("Total amount of rows obtained: %d\n", recordsObtained)
 
 	for i := 0; i < int(recordsObtained); i++ {
-		driver.Quit
+		selectElement(driver, i)
 	}
 }
 
@@ -169,9 +169,12 @@ func takeScreenshot(driver selenium.WebDriver) error {
 	return nil
 }
 
-func selectElement(driver selenium.WebElement, id int64) error {
-	id := fmt.Sprintf(selectRowButton, id)
-	driver.FindElement(selenium.ByID)
+func selectElement(driver selenium.WebDriver, id int) error {
+	formattedId := fmt.Sprintf(selectRowButton, id)
+	_, error := driver.FindElement(selenium.ByID, formattedId)
+	if error != nil {
+		return fmt.Errorf("failed to obtain the element with id %d:\n%s", id, error)
+	}
 
 	return nil
 }
