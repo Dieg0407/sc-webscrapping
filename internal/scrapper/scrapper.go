@@ -18,6 +18,7 @@ const searchButtonSelector = "tbBuscador:idFormBuscarProceso:btnBuscarSelToken"
 const retrievedRowsDataContainerSelector = ".ui-paginator-current"
 const advancedSearchSelector = ".ui-fieldset-legend"
 const selectRowButton = "tbBuscador:idFormBuscarProceso:dtProcesos:%d:j_idt240"
+const goBackButton = "tbFicha:j_idt19"
 
 func Start(date time.Time) {
 	fmt.Printf("Process initialized for date: %s\n", date.Format("2006-01-02"))
@@ -45,10 +46,6 @@ func Start(date time.Time) {
 
 	// sleep for 10s
 	time.Sleep(10 * time.Second)
-	err = takeScreenshot(driver)
-	if err != nil {
-		fmt.Printf("Failed to take screenshot:\n%v", err)
-	}
 
 	recordsObtained, err := findTotalAmountOfRows(driver)
 	if err != nil {
@@ -59,7 +56,14 @@ func Start(date time.Time) {
 	fmt.Printf("Total amount of rows obtained: %d\n", recordsObtained)
 
 	for i := 0; i < int(recordsObtained); i++ {
+		println("Processing record: ", i+1)
 		selectElement(driver, i)
+		break
+	}
+
+	err = takeScreenshot(driver)
+	if err != nil {
+		fmt.Printf("Failed to take screenshot:\n%v", err)
 	}
 }
 
@@ -171,10 +175,24 @@ func takeScreenshot(driver selenium.WebDriver) error {
 
 func selectElement(driver selenium.WebDriver, id int) error {
 	formattedId := fmt.Sprintf(selectRowButton, id)
-	_, error := driver.FindElement(selenium.ByID, formattedId)
-	if error != nil {
-		return fmt.Errorf("failed to obtain the element with id %d:\n%s", id, error)
+	element, err := driver.FindElement(selenium.ByID, formattedId)
+	if err != nil {
+		return fmt.Errorf("failed to obtain the element with id %d:\n%s", id, err)
 	}
 
-	return nil
+	err = element.Click()
+	if err != nil {
+		return fmt.Errorf("failed to click the element with id %d:\n%s", id, err)
+	}
+
+	err = driver.WaitWithTimeout(func(wd selenium.WebDriver) (bool, error) {
+		_, err := wd.FindElement(selenium.ByID, goBackButton)
+		if err != nil {
+			return false, fmt.Errorf("failed to obtain the go back button element:\n%s", err)
+		}
+
+		return true, nil
+	}, 30*time.Second)
+
+	return err
 }
