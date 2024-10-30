@@ -2,6 +2,7 @@ package scrapper
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -23,12 +24,13 @@ const nextPageButton = ".ui-paginator-next"
 const previousPageButton = ".ui-paginator-prev"
 
 func Start(date time.Time) {
-	fmt.Printf("Process initialized for date: %s\n", date.Format("2006-01-02"))
+	logger := log.New(os.Stderr, "[scrubber]", 0)
+	logger.Printf("Process initialized for date: %s\n", date.Format("2006-01-02"))
 
 	// initialize the selenium
 	service, err := selenium.NewChromeDriverService("chromedriver", 4444)
 	if err != nil {
-		fmt.Printf("Failed to start the selenium service:\n%v", err)
+		logger.Printf("Failed to start the selenium service:\n%v", err)
 		return
 	}
 
@@ -36,13 +38,13 @@ func Start(date time.Time) {
 
 	driver, err := setupDriver()
 	if err != nil {
-		fmt.Printf("Failed to open the browser:\n%v", err)
+		logger.Printf("Failed to open the browser:\n%v", err)
 		return
 	}
 
 	err = fillDates(driver, date)
 	if err != nil {
-		fmt.Printf("Failed to fill dates:\n%v", err)
+		logger.Printf("Failed to fill dates:\n%v", err)
 		return
 	}
 
@@ -52,24 +54,24 @@ func Start(date time.Time) {
 	// Scroll to the bottom of the page using JavaScript
 	_, err = driver.ExecuteScript("window.scrollTo(0, document.body.scrollHeight);", nil)
 	if err != nil {
-		fmt.Printf("Error scrolling to the bottom: %v", err)
+		logger.Printf("Error scrolling to the bottom: %v", err)
 		return
 	}
 
 	recordsObtained, err := findTotalAmountOfRows(driver)
 	if err != nil {
-		fmt.Printf("Failed to find total amount of rows:\n%v", err)
+		logger.Printf("Failed to find total amount of rows:\n%v", err)
 		return
 	}
 
-	fmt.Printf("Total amount of rows obtained: %d\n", recordsObtained)
+	logger.Printf("Total amount of rows obtained: %d\n", recordsObtained)
 	takeScreenshot(driver, "/tmp/initial-ss.jpg")
 
 	for i := 0; i < int(recordsObtained); i++ {
-		println("Processing record: ", i+1)
+		logger.Println("Processing record: ", i+1)
 		err = selectElement(driver, i)
 		if err != nil {
-			fmt.Printf("Failed to select element:\n%v", err)
+			logger.Printf("Failed to select element:\n%v", err)
 			break
 		}
 
@@ -80,7 +82,7 @@ func Start(date time.Time) {
 
 	err = takeScreenshot(driver, "/tmp/final-ss.jpg")
 	if err != nil {
-		fmt.Printf("Failed to take screenshot:\n%v", err)
+		logger.Printf("Failed to take screenshot:\n%v", err)
 	}
 }
 
@@ -214,6 +216,10 @@ func selectElement(driver selenium.WebDriver, id int) error {
 	}
 
 	// extract information
+	_, err = extractData(driver, id)
+	if err != nil {
+		return fmt.Errorf("failed to extract data:\n%s", err)
+	}
 
 	// go back
 	element, err = driver.FindElement(selenium.ByID, goBackButton)
