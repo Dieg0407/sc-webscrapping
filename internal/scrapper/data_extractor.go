@@ -32,8 +32,12 @@ func extractData(driver selenium.WebDriver, id int) (ExtractedInformation, error
 	if err != nil {
 		return ExtractedInformation{}, fmt.Errorf("failed to extract entity:\n%s", err)
 	}
+	objectType, err := extractObjectType(driver)
+	if err != nil {
+		return ExtractedInformation{}, fmt.Errorf("failed to extract object type:\n%s", err)
+	}
 
-	logger.Printf("%d|%s|%s\n", id, entity, nomenclature)
+	logger.Printf("%d|%s|%s|%s\n", id, entity, nomenclature, objectType)
 	return ExtractedInformation{}, nil
 }
 
@@ -86,5 +90,27 @@ func extractEntity(driver selenium.WebDriver) (string, error) {
 		return "", err
 	}
 
+	return text, nil
+}
+
+func extractObjectType(driver selenium.WebDriver) (string, error) {
+	objectTypeTable, err := driver.FindElement(selenium.ByID, "tbFicha:j_idt92")
+	if err != nil {
+		return "", err
+	}
+	rows, err := objectTypeTable.FindElements(selenium.ByCSSSelector, ".ui-widget-content")
+	if err != nil {
+		return "", err
+	}
+	row := rows[0]
+	headerAndValue, err := row.FindElements(selenium.ByTagName, "td")
+	if err != nil {
+		return "", err
+	}
+	value := headerAndValue[1]
+	text, err := value.Text()
+	if err != nil {
+		return "", err
+	}
 	return text, nil
 }
