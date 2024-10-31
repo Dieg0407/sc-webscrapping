@@ -65,7 +65,7 @@ func Start(date time.Time) {
 	}
 
 	logger.Printf("Total amount of rows obtained: %d\n", recordsObtained)
-	takeScreenshot(driver, "/tmp/initial-ss.jpg")
+	takeScreenshot(driver, "/tmp/sc-scrubber-initial.jpg")
 
 	for i := 0; i < int(recordsObtained); i++ {
 		logger.Println("Processing record: ", i+1)
@@ -81,7 +81,7 @@ func Start(date time.Time) {
 		}
 	}
 
-	err = takeScreenshot(driver, "/tmp/final-ss.jpg")
+	err = takeScreenshot(driver, "/tmp/sc-scrubber-final.jpg")
 	if err != nil {
 		logger.Printf("Failed to take screenshot:\n%v", err)
 	}
@@ -211,7 +211,7 @@ func selectElement(driver selenium.WebDriver, id int) error {
 	}
 
 	err = driver.WaitWithTimeout(waitForDetailsPageToLoad, 30*time.Second)
-	takeScreenshot(driver, fmt.Sprintf("/tmp/details-%d.jpg", id))
+	takeScreenshot(driver, fmt.Sprintf("/tmp/sc-scubber-%d.jpg", id))
 	if err != nil {
 		return fmt.Errorf("failed to wait for the details page to load:\n%s", err)
 	}
