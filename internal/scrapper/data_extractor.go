@@ -37,7 +37,12 @@ func extractData(driver selenium.WebDriver, id int) (ExtractedInformation, error
 		return ExtractedInformation{}, fmt.Errorf("failed to extract object type:\n%s", err)
 	}
 
-	logger.Printf("%d|%s|%s|%s\n", id, entity, nomenclature, objectType)
+	description, err := extractDescription(driver)
+	if err != nil {
+		return ExtractedInformation{}, fmt.Errorf("failed to extract description:\n%s", err)
+	}
+
+	logger.Printf("%d|%s|%s|%s|%s\n", id, entity, nomenclature, objectType, description)
 	return ExtractedInformation{}, nil
 }
 
@@ -113,4 +118,29 @@ func extractObjectType(driver selenium.WebDriver) (string, error) {
 		return "", err
 	}
 	return text, nil
+}
+
+func extractDescription(driver selenium.WebDriver) (string, error) {
+	table, err := driver.FindElement(selenium.ByID, "bb")
+	if err != nil {
+		return "", err
+	}
+
+	information, err := table.FindElements(selenium.ByTagName, "span")
+	if err != nil {
+		return "", err
+	}
+
+	if len(information) < 1 {
+		return "", fmt.Errorf("no description found")
+	}
+
+	span := information[0]
+	description, err := span.Text()
+
+	if err != nil {
+		return "", err
+	}
+
+	return description, nil
 }
