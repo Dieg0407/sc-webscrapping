@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/tebeka/selenium"
 )
@@ -121,7 +123,31 @@ func extractObjectType(driver selenium.WebDriver) (string, error) {
 }
 
 func extractDescription(driver selenium.WebDriver) (string, error) {
-	table, err := driver.FindElement(selenium.ByID, "bb")
+	legends, err := driver.FindElements(selenium.ByTagName, "legend")
+	if err != nil {
+		return "", err
+	}
+
+	for _, legend := range legends {
+		text, err := legend.Text()
+		if err != nil {
+			return "", err
+		}
+		if !strings.Contains(text, "Ver listado") {
+			continue
+		}
+
+		err = legend.Click()
+		if err != nil {
+			return "", err
+		}
+
+		break
+	}
+
+	time.Sleep(1 * time.Second)
+
+	table, err := driver.FindElement(selenium.ByID, "tbFicha:idGridLstItems_content")
 	if err != nil {
 		return "", err
 	}
