@@ -70,6 +70,7 @@ func extractData(driver selenium.WebDriver, id int) error {
 		mype := winnerData[1]
 		jungle := winnerData[2]
 
+		stderr.Printf("Process with id %d and description %s has a winner\n", id+1, description)
 		stdout.Printf(printTemplate,
 			fmt.Sprintf("%d", id+1),
 			entity,

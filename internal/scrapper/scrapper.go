@@ -23,7 +23,7 @@ const nextPageButton = ".ui-paginator-next"
 const previousPageButton = ".ui-paginator-prev"
 
 func Start(date time.Time) {
-	logger := log.New(os.Stderr, "[scrubber] ", 0)
+	logger := log.New(os.Stderr, "[scrubber] ", log.LstdFlags)
 	logger.Printf("Process initialized for date: %s\n", date.Format("2006-01-02"))
 
 	// initialize the selenium
