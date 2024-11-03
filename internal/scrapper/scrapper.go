@@ -64,7 +64,6 @@ func Start(date time.Time) {
 	}
 
 	logger.Printf("Total amount of rows obtained: %d\n", recordsObtained)
-	takeScreenshot(driver, "/tmp/sc-scrubber-initial.jpg")
 
 	if recordsObtained == 0 {
 		logger.Printf("No records obtained\n")
@@ -93,22 +92,15 @@ func Start(date time.Time) {
 
 	for i := 0; i < int(recordsObtained); i++ {
 		logger.Println("Processing record: ", i+1)
-		err = selectElement(driver, i, rowIdentifierFormat)
+		err = selectElement(driver, i, rowIdentifierFormat, logger)
 		if err != nil {
 			logger.Printf("Failed to select element:\n%v", err)
 			break
 		}
 
 		logger.Println("Record processed successfully")
-		if i > 20 {
-			break
-		}
 	}
 
-	err = takeScreenshot(driver, "/tmp/sc-scrubber-final.jpg")
-	if err != nil {
-		logger.Printf("Failed to take screenshot:\n%v", err)
-	}
 }
 
 func setupDriver() (selenium.WebDriver, error) {
@@ -258,8 +250,8 @@ func takeScreenshot(driver selenium.WebDriver, path string) error {
 	return nil
 }
 
-func selectElement(driver selenium.WebDriver, id int, rowIdentifierFormat string) error {
-	err := goToPage(driver, calculatePageNumber(id))
+func selectElement(driver selenium.WebDriver, id int, rowIdentifierFormat string, logger *log.Logger) error {
+	err := goToPage(driver, calculatePageNumber(id), logger)
 	if err != nil {
 		return fmt.Errorf("failed to go to the page %d:\n%s", calculatePageNumber(id), err)
 	}
@@ -276,7 +268,6 @@ func selectElement(driver selenium.WebDriver, id int, rowIdentifierFormat string
 	}
 
 	err = driver.WaitWithTimeout(waitForDetailsPageToLoad, 30*time.Second)
-	takeScreenshot(driver, fmt.Sprintf("/tmp/sc-scubber-%d.jpg", id))
 	if err != nil {
 		return fmt.Errorf("failed to wait for the details page to load:\n%s", err)
 	}
@@ -298,7 +289,6 @@ func selectElement(driver selenium.WebDriver, id int, rowIdentifierFormat string
 	}
 
 	err = driver.WaitWithTimeout(waitForMainPageToLoad, 30*time.Second)
-	takeScreenshot(driver, fmt.Sprintf("/tmp/after-details-%d.jpg", id))
 	if err != nil {
 		return fmt.Errorf("failed to wait for the main page to load:\n%s", err)
 	}
@@ -331,7 +321,7 @@ func calculatePageNumber(id int) int {
 	return page
 }
 
-func goToPage(driver selenium.WebDriver, page int) error {
+func goToPage(driver selenium.WebDriver, page int, logger *log.Logger) error {
 	paginator, err := driver.FindElements(selenium.ByCSSSelector, ".ui-paginator-page")
 	if err != nil {
 		return fmt.Errorf("failed to obtain the paginator elements:\n%s", err)
@@ -365,20 +355,24 @@ func goToPage(driver selenium.WebDriver, page int) error {
 	}
 	if activePage < page {
 		// move forward
-		fmt.Println("moving forward")
+		logger.Println("moving forward")
 		err = clickNextPage(driver)
 		if err != nil {
 			return fmt.Errorf("failed to click the next page button:\n%s", err)
 		}
-		return goToPage(driver, page)
+		_, err = driver.ExecuteScript("window.scrollTo(0, document.body.scrollHeight);", nil)
+		if err != nil {
+			return err
+		}
+		return goToPage(driver, page, logger)
 	}
 
-	fmt.Println("moving backward")
+	logger.Println("moving backward")
 	err = clickPreviousPage(driver)
 	if err != nil {
 		return fmt.Errorf("failed to click the previous page button:\n%s", err)
 	}
-	return goToPage(driver, page)
+	return goToPage(driver, page, logger)
 }
 
 func clickNextPage(driver selenium.WebDriver) error {

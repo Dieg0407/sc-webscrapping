@@ -28,9 +28,11 @@ const entityXPath = "/html/body/div[3]/div/div/div/div/form/table[2]/tbody/tr[1]
 const objectTypeXPath = "/html/body/div[3]/div/div/div/div/form/table[2]/tbody/tr[1]/td[1]/table/tbody/tr/td/fieldset/div/table/tbody/tr[9]/td/table/tbody/tr[1]/td[2]"
 const valueXPath = "/html/body/div[3]/div/div/div/div/form/table[2]/tbody/tr[1]/td[1]/table/tbody/tr/td/fieldset/div/table/tbody/tr[9]/td/table/tbody/tr[3]/td[2]/span[1]"
 const currencyXPath = "/html/body/div[3]/div/div/div/div/form/table[2]/tbody/tr[1]/td[1]/table/tbody/tr/td/fieldset/div/table/tbody/tr[9]/td/table/tbody/tr[3]/td[2]/span[2]"
+const winnerElement = "tbFicha:idGridLstItems:0:dtParticipantes_data"
 
 func extractData(driver selenium.WebDriver, id int) (ExtractedInformation, error) {
-	logger := log.New(os.Stdout, "", 0)
+	stdout := log.New(os.Stdout, "", 0)
+	stderr := log.New(os.Stderr, "[data-extractor] ", 0)
 
 	nomenclature, err := extractTextByXPath(driver, nomenclatureXPath)
 	if err != nil {
@@ -49,13 +51,37 @@ func extractData(driver selenium.WebDriver, id int) (ExtractedInformation, error
 		return ExtractedInformation{}, fmt.Errorf("failed to extract value:\n%s", err)
 	}
 	currency, err := extractTextByXPath(driver, currencyXPath)
+	if err != nil {
+		return ExtractedInformation{}, fmt.Errorf("failed to extract currency:\n%s", err)
+	}
 
 	description, err := extractDescription(driver)
 	if err != nil {
 		return ExtractedInformation{}, fmt.Errorf("failed to extract description:\n%s", err)
 	}
+	hasWinner, winnerData, err := extractWinner(driver)
 
-	logger.Printf("%d|%s|%s|%s|%s|%s|%s\n", id, entity, nomenclature, objectType, description, value, currency)
+	if hasWinner {
+		winnerName := winnerData[0]
+		mype := winnerData[1]
+		jungle := winnerData[2]
+
+		stdout.Printf("%d|%s|%s|%s|%s|%s|%s|%s|%s|%s\n",
+			id,
+			entity,
+			nomenclature,
+			objectType,
+			description,
+			value,
+			currency,
+			winnerName,
+			mype,
+			jungle,
+		)
+	} else {
+		stderr.Printf("Process with id %d and description %s has no winner\n", id+1, description)
+	}
+
 	return ExtractedInformation{}, nil
 }
 
@@ -163,4 +189,32 @@ func extractValue(driver selenium.WebDriver) (string, error) {
 		return "", err
 	}
 	return text, nil
+}
+
+func extractWinner(driver selenium.WebDriver) (bool, []string, error) {
+	winnerTable, err := driver.FindElement(selenium.ByID, winnerElement)
+	if err != nil {
+		return false, nil, err
+	}
+	columns, err := winnerTable.FindElements(selenium.ByTagName, "td")
+	if len(columns) == 1 {
+		return false, nil, nil
+	}
+
+	winner, err := columns[0].Text()
+	if err != nil {
+		return false, nil, err
+	}
+
+	mype, err := columns[1].Text()
+	if err != nil {
+		return false, nil, err
+	}
+
+	jungle, err := columns[2].Text()
+	if err != nil {
+		return false, nil, err
+	}
+
+	return true, []string{winner, mype, jungle}, nil
 }

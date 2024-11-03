@@ -7,6 +7,6 @@ import (
 
 func main() {
 	time := time.Now()
-	yesterday := time.AddDate(0, 0, -1)
+	yesterday := time.AddDate(0, 0, -5)
 	scrapper.Start(yesterday)
 }
