@@ -10,54 +10,58 @@ import (
 	"github.com/tebeka/selenium"
 )
 
-type ExtractedInformation struct {
-	id           int
-	entity       string
-	nomenclature string
-	objectType   string
-	description  string
-	value        string
-	currency     string
-	winner       string
-	mype         string
-	jungle       string
-}
-
 const nomenclatureXPath = "/html/body/div[3]/div/div/div/div/form/table[2]/tbody/tr[1]/td[1]/table/tbody/tr/td/fieldset/div/table/tbody/tr[2]/td/table/tbody/tr[1]/td[2]"
 const entityXPath = "/html/body/div[3]/div/div/div/div/form/table[2]/tbody/tr[1]/td[1]/table/tbody/tr/td/fieldset/div/table/tbody/tr[6]/td/table/tbody/tr[1]/td[2]"
 const objectTypeXPath = "/html/body/div[3]/div/div/div/div/form/table[2]/tbody/tr[1]/td[1]/table/tbody/tr/td/fieldset/div/table/tbody/tr[9]/td/table/tbody/tr[1]/td[2]"
 const valueXPath = "/html/body/div[3]/div/div/div/div/form/table[2]/tbody/tr[1]/td[1]/table/tbody/tr/td/fieldset/div/table/tbody/tr[9]/td/table/tbody/tr[3]/td[2]/span[1]"
 const currencyXPath = "/html/body/div[3]/div/div/div/div/form/table[2]/tbody/tr[1]/td[1]/table/tbody/tr/td/fieldset/div/table/tbody/tr[9]/td/table/tbody/tr[3]/td[2]/span[2]"
 const winnerElement = "tbFicha:idGridLstItems:0:dtParticipantes_data"
+const printTemplate = "%s;\"%s\";\"%s\";%s;\"%s\";%s;%s;\"%s\";%s;%s\n"
 
-func extractData(driver selenium.WebDriver, id int) (ExtractedInformation, error) {
+func printHeader() {
+	stdout := log.New(os.Stdout, "", 0)
+	stdout.Printf(printTemplate,
+		"Identificador",
+		"Entidad",
+		"Nomenclarura",
+		"Objecto",
+		"Descripción",
+		"Valor",
+		"Moneda",
+		"Ganador",
+		"Es MYPE",
+		"Es Selva",
+	)
+}
+
+func extractData(driver selenium.WebDriver, id int) error {
 	stdout := log.New(os.Stdout, "", 0)
 	stderr := log.New(os.Stderr, "[data-extractor] ", 0)
 
 	nomenclature, err := extractTextByXPath(driver, nomenclatureXPath)
 	if err != nil {
-		return ExtractedInformation{}, fmt.Errorf("failed to extract nomenclature:\n%s", err)
+		return fmt.Errorf("failed to extract nomenclature:\n%s", err)
 	}
 	entity, err := extractTextByXPath(driver, entityXPath)
 	if err != nil {
-		return ExtractedInformation{}, fmt.Errorf("failed to extract entity:\n%s", err)
+		return fmt.Errorf("failed to extract entity:\n%s", err)
 	}
 	objectType, err := extractTextByXPath(driver, objectTypeXPath)
 	if err != nil {
-		return ExtractedInformation{}, fmt.Errorf("failed to extract object type:\n%s", err)
+		return fmt.Errorf("failed to extract object type:\n%s", err)
 	}
 	value, err := extractTextByXPath(driver, valueXPath)
 	if err != nil {
-		return ExtractedInformation{}, fmt.Errorf("failed to extract value:\n%s", err)
+		return fmt.Errorf("failed to extract value:\n%s", err)
 	}
 	currency, err := extractTextByXPath(driver, currencyXPath)
 	if err != nil {
-		return ExtractedInformation{}, fmt.Errorf("failed to extract currency:\n%s", err)
+		return fmt.Errorf("failed to extract currency:\n%s", err)
 	}
 
 	description, err := extractDescription(driver)
 	if err != nil {
-		return ExtractedInformation{}, fmt.Errorf("failed to extract description:\n%s", err)
+		return fmt.Errorf("failed to extract description:\n%s", err)
 	}
 	hasWinner, winnerData, err := extractWinner(driver)
 
@@ -66,8 +70,8 @@ func extractData(driver selenium.WebDriver, id int) (ExtractedInformation, error
 		mype := winnerData[1]
 		jungle := winnerData[2]
 
-		stdout.Printf("%d;\"%s\";\"%s\";%s;\"%s\";%s;%s;\"%s\";%s;%s\n",
-			id+1,
+		stdout.Printf(printTemplate,
+			fmt.Sprintf("%d", id+1),
 			entity,
 			nomenclature,
 			objectType,
@@ -82,7 +86,7 @@ func extractData(driver selenium.WebDriver, id int) (ExtractedInformation, error
 		stderr.Printf("Process with id %d and description %s has no winner\n", id+1, description)
 	}
 
-	return ExtractedInformation{}, nil
+	return nil
 }
 
 func extractTextByXPath(driver selenium.WebDriver, xpath string) (string, error) {

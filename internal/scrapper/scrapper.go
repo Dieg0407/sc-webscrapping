@@ -90,6 +90,7 @@ func Start(date time.Time) {
 	}
 	logger.Printf("Row identifier format extracted: %s\n", rowIdentifierFormat)
 
+	printHeader()
 	for i := 0; i < int(recordsObtained); i++ {
 		logger.Println("Processing record: ", i+1)
 		err = selectElement(driver, i, rowIdentifierFormat, logger)
@@ -273,7 +274,7 @@ func selectElement(driver selenium.WebDriver, id int, rowIdentifierFormat string
 	}
 
 	// extract information
-	_, err = extractData(driver, id)
+	err = extractData(driver, id)
 	if err != nil {
 		return fmt.Errorf("failed to extract data:\n%s", err)
 	}
