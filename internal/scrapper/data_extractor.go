@@ -23,76 +23,48 @@ type ExtractedInformation struct {
 	jungle       string
 }
 
+const nomenclatureXPath = "/html/body/div[3]/div/div/div/div/form/table[2]/tbody/tr[1]/td[1]/table/tbody/tr/td/fieldset/div/table/tbody/tr[2]/td/table/tbody/tr[1]/td[2]"
+const entityXPath = "/html/body/div[3]/div/div/div/div/form/table[2]/tbody/tr[1]/td[1]/table/tbody/tr/td/fieldset/div/table/tbody/tr[6]/td/table/tbody/tr[1]/td[2]"
+const objectTypeXPath = "/html/body/div[3]/div/div/div/div/form/table[2]/tbody/tr[1]/td[1]/table/tbody/tr/td/fieldset/div/table/tbody/tr[9]/td/table/tbody/tr[1]/td[2]"
+const valueXPath = "/html/body/div[3]/div/div/div/div/form/table[2]/tbody/tr[1]/td[1]/table/tbody/tr/td/fieldset/div/table/tbody/tr[9]/td/table/tbody/tr[3]/td[2]/span[1]"
+const currencyXPath = "/html/body/div[3]/div/div/div/div/form/table[2]/tbody/tr[1]/td[1]/table/tbody/tr/td/fieldset/div/table/tbody/tr[9]/td/table/tbody/tr[3]/td[2]/span[2]"
+
 func extractData(driver selenium.WebDriver, id int) (ExtractedInformation, error) {
 	logger := log.New(os.Stdout, "", 0)
 
-	nomenclature, err := extractNomenclature(driver)
+	nomenclature, err := extractTextByXPath(driver, nomenclatureXPath)
 	if err != nil {
 		return ExtractedInformation{}, fmt.Errorf("failed to extract nomenclature:\n%s", err)
 	}
-	entity, err := extractEntity(driver)
+	entity, err := extractTextByXPath(driver, entityXPath)
 	if err != nil {
 		return ExtractedInformation{}, fmt.Errorf("failed to extract entity:\n%s", err)
 	}
-	objectType, err := extractObjectType(driver)
+	objectType, err := extractTextByXPath(driver, objectTypeXPath)
 	if err != nil {
 		return ExtractedInformation{}, fmt.Errorf("failed to extract object type:\n%s", err)
 	}
+	value, err := extractTextByXPath(driver, valueXPath)
+	if err != nil {
+		return ExtractedInformation{}, fmt.Errorf("failed to extract value:\n%s", err)
+	}
+	currency, err := extractTextByXPath(driver, currencyXPath)
 
 	description, err := extractDescription(driver)
 	if err != nil {
 		return ExtractedInformation{}, fmt.Errorf("failed to extract description:\n%s", err)
 	}
 
-	logger.Printf("%d|%s|%s|%s|%s\n", id, entity, nomenclature, objectType, description)
+	logger.Printf("%d|%s|%s|%s|%s|%s|%s\n", id, entity, nomenclature, objectType, description, value, currency)
 	return ExtractedInformation{}, nil
 }
 
-func extractNomenclature(driver selenium.WebDriver) (string, error) {
-	generalInformationTable, err := driver.FindElement(selenium.ByID, "tbFicha:j_idt25")
+func extractTextByXPath(driver selenium.WebDriver, xpath string) (string, error) {
+	element, err := driver.FindElement(selenium.ByXPATH, xpath)
 	if err != nil {
 		return "", err
 	}
-
-	rows, err := generalInformationTable.FindElements(selenium.ByCSSSelector, ".ui-widget-content")
-	if err != nil {
-		return "", err
-	}
-
-	row := rows[0]
-	headerAndValue, err := row.FindElements(selenium.ByTagName, "td")
-	if err != nil {
-		return "", err
-	}
-
-	value := headerAndValue[1]
-	text, err := value.Text()
-	if err != nil {
-		return "", err
-	}
-
-	return text, nil
-}
-
-func extractEntity(driver selenium.WebDriver) (string, error) {
-	entityInformationTable, err := driver.FindElement(selenium.ByID, "tbFicha:j_idt68")
-	if err != nil {
-		return "", err
-	}
-
-	rows, err := entityInformationTable.FindElements(selenium.ByCSSSelector, ".ui-widget-content")
-	if err != nil {
-		return "", err
-	}
-
-	row := rows[0]
-	headerAndValue, err := row.FindElements(selenium.ByTagName, "td")
-	if err != nil {
-		return "", err
-	}
-
-	value := headerAndValue[1]
-	text, err := value.Text()
+	text, err := element.Text()
 	if err != nil {
 		return "", err
 	}
@@ -169,4 +141,26 @@ func extractDescription(driver selenium.WebDriver) (string, error) {
 	}
 
 	return description, nil
+}
+
+func extractValue(driver selenium.WebDriver) (string, error) {
+	valueTable, err := driver.FindElement(selenium.ByID, "tbFicha:j_idt93")
+	if err != nil {
+		return "", err
+	}
+	rows, err := valueTable.FindElements(selenium.ByCSSSelector, ".ui-widget-content")
+	if err != nil {
+		return "", err
+	}
+	row := rows[0]
+	headerAndValue, err := row.FindElements(selenium.ByTagName, "td")
+	if err != nil {
+		return "", err
+	}
+	value := headerAndValue[1]
+	text, err := value.Text()
+	if err != nil {
+		return "", err
+	}
+	return text, nil
 }

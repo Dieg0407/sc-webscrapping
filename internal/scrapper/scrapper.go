@@ -19,7 +19,6 @@ const searchButtonSelector = "tbBuscador:idFormBuscarProceso:btnBuscarSelToken"
 const retrievedRowsDataContainerSelector = ".ui-paginator-current"
 const advancedSearchSelector = ".ui-fieldset-legend"
 const tableDataSelector = "tbBuscador:idFormBuscarProceso:dtProcesos_data"
-const goBackButton = "tbFicha:j_idt19"
 const nextPageButton = ".ui-paginator-next"
 const previousPageButton = ".ui-paginator-prev"
 
@@ -289,7 +288,7 @@ func selectElement(driver selenium.WebDriver, id int, rowIdentifierFormat string
 	}
 
 	// go back
-	element, err = driver.FindElement(selenium.ByID, goBackButton)
+	element, err = driver.FindElement(selenium.ByXPATH, "//button[span[text()='Regresar']]")
 	if err != nil {
 		return fmt.Errorf("failed to obtain the go back button:\n%s", err)
 	}
@@ -308,7 +307,7 @@ func selectElement(driver selenium.WebDriver, id int, rowIdentifierFormat string
 }
 
 func waitForDetailsPageToLoad(wd selenium.WebDriver) (bool, error) {
-	_, err := wd.FindElement(selenium.ByID, goBackButton)
+	_, err := wd.FindElement(selenium.ByXPATH, "//button[span[text()='Regresar']]")
 	if err != nil {
 		return false, fmt.Errorf("failed to obtain the go to the details page:\n%s", err)
 	}
