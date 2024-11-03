@@ -66,8 +66,8 @@ func extractData(driver selenium.WebDriver, id int) (ExtractedInformation, error
 		mype := winnerData[1]
 		jungle := winnerData[2]
 
-		stdout.Printf("%d|%s|%s|%s|%s|%s|%s|%s|%s|%s\n",
-			id,
+		stdout.Printf("%d;\"%s\";\"%s\";%s;\"%s\";%s;%s;\"%s\";%s;%s\n",
+			id+1,
 			entity,
 			nomenclature,
 			objectType,
