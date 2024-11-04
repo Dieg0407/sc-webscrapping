@@ -1,2 +1,3 @@
-reportes*.csv
-
+reporte*.csv
+sc-scrubber
+*.execution.log

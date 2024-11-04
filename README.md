@@ -20,3 +20,10 @@ You can then run the program with the command sending the date in the format `YY
 ```bash
 go run cmd/cli.go -d "2024-11-01" > reportes-2024-11-01.csv
 ```
+
+## Scripts
+
+The `install.sh` will build the program and add it to the `/usr/local/bin/` folder.
+
+The `runner.sh` requires install to be ran first, it will run the program taking as the 
+input date the week previous to the execution date
