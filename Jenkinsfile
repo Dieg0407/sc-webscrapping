@@ -1,9 +1,17 @@
 pipeline {
     agent any
+
     stages {
-        stage('Stage 1') {
+        stage('Build') {
             steps {
-                echo 'Hello from user $USER'
+                echo 'Building webscrapper'
+                sh 'go build -o sc-scrubber cmd/cli.go'
+            }
+        }
+        stage('Deploy') {
+            steps {
+                echo 'Building webscrapper'
+                sh 'mv sc-scrubber /opt/custom/sc-scrubber'
             }
         }
     }
