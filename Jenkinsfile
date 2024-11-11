@@ -2,17 +2,17 @@ pipeline {
     agent any
 
     stages {
-        stage('Build') {
+        stage('Build CLI Tool') {
             steps {
-                echo 'Building webscrapper'
-                sh 'go build -o scrubber cmd/cli.go'
-            }
-        }
-        stage('Deploy') {
-            steps {
-                echo 'Building webscrapper'
-                sh 'mv scrubber /opt/custom/scrubber'
-                sh 'cp runner.sh /opt/custom/runner.sh'
+                dir("cli") {
+                    echo 'Building scrubber'
+                    sh 'go build -o scrubber cmd/cli.go'
+
+                    echo 'Updating scrubber'
+                    sh 'mv scrubber /opt/custom/scrubber'
+                    sh 'cp scripts/runner.sh /opt/custom/runner.sh'
+                }
+                
             }
         }
     }
