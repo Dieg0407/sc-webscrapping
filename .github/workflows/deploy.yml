@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 'stable'
+
+    - name: Build Linux
+      run: GOOS=linux GOARCH=amd64 go build -v -o scrubber cmd/cli.go
+
+    - name: Upload Linux Build Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: linux-scrubber
+        path:
+          - scrubber
+          - scripts/runner.sh
+
+    - name: Build Windows
+      run: GOOS=windows GOARCH=amd64 go build -v -o scrubber.exe cmd/cli.go
+
+    - name: Upload Windows Build Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: windows-scrubber
+        path: 
+          - scrubber.exe
+          - scripts/runner.ps1
