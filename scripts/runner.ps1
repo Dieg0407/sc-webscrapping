@@ -6,4 +6,4 @@ if (!(Test-Path -Path "reportes")) {
 
 $report_path = "reportes\reporte-$execution_date.csv"
 
-.\scrubber.exe -d $execution_date > $report_path
+.\scrapper.exe -d $execution_date > $report_path

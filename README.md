@@ -20,14 +20,14 @@ Identificador;Entidad;Nomenclarura;Objecto;Descripción;Valor;Moneda;Ganador;Es 
 You can then run the program with the command sending the date in the format `YYYY-MM-DD`
 
 ```bash
-go build -v -o scrubber cmd/cli.go
-./scrubber -d "2024-11-01" > reportes-2024-11-01.csv
+go build -v -o scrapper cmd/cli.go
+./scrapper -d "2024-11-01" > reportes-2024-11-01.csv
 ```
 
 
 ## Scripts
 
-There are 2 main scripts for this, one for windows and one for linux. Both require the `scrubber`
+There are 2 main scripts for this, one for windows and one for linux. Both require the `scrapper`
 to be on the same folder
 
 The linux `runner.sh` is meant to be used as a cron, by default it will take the current 
