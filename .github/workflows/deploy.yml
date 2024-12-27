@@ -25,7 +25,6 @@ jobs:
         name: linux-scrubber
         path:
           - scrubber
-          - scripts/runner.sh
 
     - name: Build Windows
       run: GOOS=windows GOARCH=amd64 go build -v -o scrubber.exe cmd/cli.go
@@ -36,4 +35,3 @@ jobs:
         name: windows-scrubber
         path: 
           - scrubber.exe
-          - scripts/runner.ps1
