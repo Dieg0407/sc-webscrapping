@@ -23,9 +23,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: linux-scrubber
-        path:
-          - scrubber
-          - scripts/runner.sh
+        path: scrubber
 
     - name: Build Windows
       run: GOOS=windows GOARCH=amd64 go build -v -o scrubber.exe cmd/cli.go
@@ -34,6 +32,4 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: windows-scrubber
-        path: 
-          - scrubber.exe
-          - scripts/runner.ps1
+        path: scrubber.exe
