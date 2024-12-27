@@ -20,16 +20,28 @@ jobs:
       run: GOOS=linux GOARCH=amd64 go build -v -o scrubber cmd/cli.go
 
     - name: Upload Linux Build Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: linux-scrubber
+        name: scrubber
         path: scrubber
+
+    - name: Upload Linux Runner Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: runner.sh
+        path: scripts/runner.sh
 
     - name: Build Windows
       run: GOOS=windows GOARCH=amd64 go build -v -o scrubber.exe cmd/cli.go
 
     - name: Upload Windows Build Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: windows-scrubber
+        name: scrubber.exe
         path: scrubber.exe
+
+    - name: Upload Windows Script Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: runner.ps1
+        path: scripts/runner.ps1 
