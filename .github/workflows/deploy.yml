@@ -4,10 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    environment: prod
     steps:
     - uses: actions/checkout@v3
 
@@ -17,31 +19,19 @@ jobs:
         go-version: 'stable'
 
     - name: Build Linux
-      run: GOOS=linux GOARCH=amd64 go build -v -o scrubber cmd/cli.go
-
-    - name: Upload Linux Build Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: scrapper 
-        path: scrapper
-
-    - name: Upload Linux Runner Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: runner.sh
-        path: scripts/runner.sh
+      run: GOOS=linux GOARCH=amd64 go build -v -o scrapper cmd/cli.go
 
     - name: Build Windows
-      run: GOOS=windows GOARCH=amd64 go build -v -o scrubber.exe cmd/cli.go
+      run: GOOS=windows GOARCH=amd64 go build -v -o scrapper.exe cmd/cli.go
 
-    - name: Upload Windows Build Artifact
-      uses: actions/upload-artifact@v4
+    - name: Release
+      uses: softprops/action-gh-release@v2
       with:
-        name: scrapper.exe
-        path: scrapper.exe
+        token: ${{ secrets.GHA_TOKEN }}
+        make_latest: true
+        files: |
+            scrapper
+            scrapper.exe
+            scripts/runner.ps1
+            scripts/runner.sh
 
-    - name: Upload Windows Script Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: runner.ps1
-        path: scripts/runner.ps1 
