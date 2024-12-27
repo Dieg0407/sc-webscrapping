@@ -20,21 +20,21 @@ func main() {
 
 	app := &cli.App{
 		Name:  "scrapper",
-		Usage: "Use this to extract information from the page",
+		Usage: "Utiliza esto para extraer información de la página",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:        "process-date",
+				Name:        "fecha-proceso",
 				Aliases:     []string{"d"},
-				Usage:       "The date to process",
+				Usage:       "La fecha a procesar",
 				Destination: &dateString,
 			},
 		},
 		Action: func(*cli.Context) error {
 			if dateString == "" {
-				return fmt.Errorf("You must provide a date")
+				return fmt.Errorf("Debes proporcionar una fecha")
 			}
 			if date, err = time.Parse(layout, dateString); err != nil {
-				return fmt.Errorf("Invalid date format, you should use YYYY-MM-DD")
+				return fmt.Errorf("Formato de fecha inválido, debes usar YYYY-MM-DD")
 			}
 			scrapper.Start(date)
 			return nil

@@ -36,32 +36,32 @@ func printHeader() {
 
 func extractData(driver selenium.WebDriver, id int) error {
 	stdout := log.New(os.Stdout, "", 0)
-	stderr := log.New(os.Stderr, "[data-extractor] ", 0)
+	stderr := log.New(os.Stderr, "[extractor-datos] ", 0)
 
 	nomenclature, err := extractTextByXPath(driver, nomenclatureXPath)
 	if err != nil {
-		return fmt.Errorf("failed to extract nomenclature:\n%s", err)
+		return fmt.Errorf("error al extraer la nomenclatura:\n%s", err)
 	}
 	entity, err := extractTextByXPath(driver, entityXPath)
 	if err != nil {
-		return fmt.Errorf("failed to extract entity:\n%s", err)
+		return fmt.Errorf("error al extraer la entidad:\n%s", err)
 	}
 	objectType, err := extractTextByXPath(driver, objectTypeXPath)
 	if err != nil {
-		return fmt.Errorf("failed to extract object type:\n%s", err)
+		return fmt.Errorf("error al extraer el tipo de objeto:\n%s", err)
 	}
 	value, err := extractTextByXPath(driver, valueXPath)
 	if err != nil {
-		return fmt.Errorf("failed to extract value:\n%s", err)
+		return fmt.Errorf("error al extraer el valor:\n%s", err)
 	}
 	currency, err := extractTextByXPath(driver, currencyXPath)
 	if err != nil {
-		return fmt.Errorf("failed to extract currency:\n%s", err)
+		return fmt.Errorf("error al extraer la moneda:\n%s", err)
 	}
 
 	description, err := extractDescription(driver)
 	if err != nil {
-		return fmt.Errorf("failed to extract description:\n%s", err)
+		return fmt.Errorf("error al extraer la descripción:\n%s", err)
 	}
 	hasWinner, winnerData, err := extractWinner(driver)
 
@@ -70,7 +70,7 @@ func extractData(driver selenium.WebDriver, id int) error {
 		mype := winnerData[1]
 		jungle := winnerData[2]
 
-		stderr.Printf("Process with id %d and description %s has a winner\n", id+1, description)
+		stderr.Printf("El proceso con id %d y descripción %s tiene un ganador\n", id+1, description)
 		stdout.Printf(printTemplate,
 			fmt.Sprintf("%d", id+1),
 			entity,
@@ -84,7 +84,7 @@ func extractData(driver selenium.WebDriver, id int) error {
 			jungle,
 		)
 	} else {
-		stderr.Printf("Process with id %d and description %s has no winner\n", id+1, description)
+		stderr.Printf("El proceso con id %d y descripción %s no tiene ganador\n", id+1, description)
 	}
 
 	return nil
