@@ -31,6 +31,6 @@ jobs:
         files: |
             scrapper
             scrapper.exe
-            scripts/runner.ps1
+            scripts/runner.bat
             scripts/runner.sh
 
