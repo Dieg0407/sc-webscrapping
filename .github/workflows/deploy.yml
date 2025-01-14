@@ -8,6 +8,7 @@ on:
 
 jobs:
   build:
+    environment: prod
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -26,7 +27,7 @@ jobs:
     - name: Release
       uses: softprops/action-gh-release@v2
       with:
-        token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
+        token: ${{ secrets.GHA_TOKEN }}
         make_latest: true
         files: |
             scrapper
