@@ -21,6 +21,7 @@ const advancedSearchSelector = ".ui-fieldset-legend"
 const tableDataSelector = "tbBuscador:idFormBuscarProceso:dtProcesos_data"
 const nextPageButton = ".ui-paginator-next"
 const previousPageButton = ".ui-paginator-prev"
+const selectionProceduresOption = "/html/body/div[3]/div/div[1]/ul/li[2]/a"
 
 func Start(date time.Time) {
 	logger := log.New(os.Stderr, "[scrapper] ", log.LstdFlags)
@@ -38,6 +39,11 @@ func Start(date time.Time) {
 	driver, err := setupDriver()
 	if err != nil {
 		logger.Printf("Error al abrir el navegador:\n%v", err)
+		return
+	}
+	err = selectSelectionProceduresOption(driver)
+	if err != nil {
+		logger.Printf("Error al seleccionar la opción de procedimientos de selección:\n%v", err)
 		return
 	}
 
@@ -103,6 +109,19 @@ func Start(date time.Time) {
 	}
 
 	logger.Println("Proceso finalizado")
+}
+
+func selectSelectionProceduresOption(driver selenium.WebDriver) error {
+	option, err := driver.FindElement(selenium.ByXPATH, selectionProceduresOption)
+	if err != nil {
+		return fmt.Errorf("no se pudo encontrar la opción de procedimientos de selección:\n%w", err)
+	}
+	err = option.Click()
+	if err != nil {
+		return fmt.Errorf("no se pudo hacer clic en la opción de procedimientos de selección:\n%w", err)
+	}
+	time.Sleep(2 * time.Second)
+	return nil
 }
 
 func setupDriver() (selenium.WebDriver, error) {
@@ -173,17 +192,23 @@ func fillDates(driver selenium.WebDriver, date time.Time) error {
 }
 
 func findTotalAmountOfRows(driver selenium.WebDriver) (int64, error) {
-	retrievedRowsData, err := driver.FindElement(selenium.ByCSSSelector, retrievedRowsDataContainerSelector)
+	retrievedRowsData, err := driver.FindElements(selenium.ByCSSSelector, retrievedRowsDataContainerSelector)
 	if err != nil {
 		return 0, fmt.Errorf("no se pudo obtener el contenedor de filas recuperadas:\n%s", err)
 	}
-
-	text, err := retrievedRowsData.Text()
-	if err != nil {
-		return 0, fmt.Errorf("no se pudo obtener el texto del contenedor de filas recuperadas:\n%s", err)
+	var parts []string = []string{}
+	var text string
+	for _, element := range retrievedRowsData {
+		text, err := element.Text()
+		if err != nil {
+			return 0, fmt.Errorf("no se pudo obtener el texto del contenedor de filas recuperadas:\n%s", err)
+		}
+		if strings.Contains(text, "Mostrando") {
+			parts = strings.Fields(text)
+			break
+		}
 	}
 
-	parts := strings.Fields(text)
 	if len(parts) < 8 {
 		return 0, fmt.Errorf("no se pudo extraer la cantidad total de filas del contenedor:\n%s", text)
 	}
@@ -236,20 +261,6 @@ func extractRowIdentifierFormat(driver selenium.WebDriver) (string, error) {
 	}
 
 	return strings.Replace(attribute, ":0:", ":%d:", 1), nil
-}
-
-func takeScreenshot(driver selenium.WebDriver, path string) error {
-	screenshot, err := driver.Screenshot()
-	if err != nil {
-		return fmt.Errorf("el controlador no pudo tomar la captura de pantalla:\n%s", err)
-	}
-
-	err = os.WriteFile(path, screenshot, 0644)
-	if err != nil {
-		return fmt.Errorf("error al escribir la captura de pantalla: \n%s", err)
-	}
-
-	return nil
 }
 
 func selectElement(driver selenium.WebDriver, id int, rowIdentifierFormat string, logger *log.Logger) error {
@@ -378,47 +389,48 @@ func goToPage(driver selenium.WebDriver, page int, logger *log.Logger) error {
 }
 
 func clickNextPage(driver selenium.WebDriver) error {
-	nextPage, err := driver.FindElement(selenium.ByCSSSelector, nextPageButton)
+	nextPageButton, err := findActiveButton(driver, nextPageButton)
 	if err != nil {
-		return fmt.Errorf("error al obtener el botón de siguiente página:\n%s", err)
+		return fmt.Errorf("error al encontrar el botón activo de página siguiente:\n%s", err)
+	}
+	err = nextPageButton.Click()
+	if err != nil {
+		return fmt.Errorf("error al hacer clic en el botón de página siguiente:\n%s", err)
 	}
 
-	classNames, err := nextPage.GetAttribute("class")
-	if err != nil {
-		return fmt.Errorf("error al obtener los nombres de clase:\n%s", err)
-	}
-
-	if strings.Contains(classNames, "ui-state-disabled") {
-		return fmt.Errorf("el botón de siguiente página está deshabilitado")
-	}
-
-	err = nextPage.Click()
-	if err != nil {
-		return fmt.Errorf("error al hacer clic en el botón de siguiente página:\n%s", err)
-	}
 	time.Sleep(5 * time.Second)
 	return nil
 }
 
 func clickPreviousPage(driver selenium.WebDriver) error {
-	previousPage, err := driver.FindElement(selenium.ByCSSSelector, previousPageButton)
+	previousPageButton, err := findActiveButton(driver, previousPageButton)
 	if err != nil {
-		return fmt.Errorf("error al obtener el botón de página anterior:\n%s", err)
+		return fmt.Errorf("error al encontrar el botón activo de página anterior:\n%s", err)
 	}
 
-	classNames, err := previousPage.GetAttribute("class")
-	if err != nil {
-		return fmt.Errorf("error al obtener los nombres de clase:\n%s", err)
-	}
-
-	if strings.Contains(classNames, "ui-state-disabled") {
-		return fmt.Errorf("el botón de página anterior está deshabilitado")
-	}
-
-	err = previousPage.Click()
+	err = previousPageButton.Click()
 	if err != nil {
 		return fmt.Errorf("error al hacer clic en el botón de página anterior:\n%s", err)
 	}
 	time.Sleep(5 * time.Second)
 	return nil
+}
+
+func findActiveButton(driver selenium.WebDriver, buttonSelector string) (selenium.WebElement, error) {
+	buttons, err := driver.FindElements(selenium.ByCSSSelector, buttonSelector)
+	if err != nil {
+		return nil, fmt.Errorf("error al obtener los botones:\n%s", err)
+	}
+
+	for _, button := range buttons {
+		classNames, err := button.GetAttribute("class")
+		if err != nil {
+			return nil, fmt.Errorf("error al obtener los nombres de clase:\n%s", err)
+		}
+		if !strings.Contains(classNames, "ui-state-disabled") {
+			return button, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no se encontró el botón activo")
 }
