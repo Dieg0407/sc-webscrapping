@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -47,6 +48,7 @@ const (
 	errSeleccionarElemento     = "Error al seleccionar el elemento"
 	errNoRegistros             = "No se obtuvieron registros"
 	errProcesarRegistro        = "Error al procesar el registro"
+	screenshotsDir             = "screenshots"
 )
 
 func Start(date time.Time) {
@@ -131,6 +133,27 @@ func realizarBusqueda(driver selenium.WebDriver, tab selenium.WebElement, date t
 	return nil
 }
 
+func takeScreenshot(driver selenium.WebDriver, filename string) error {
+	// Crear directorio si no existe
+	if err := os.MkdirAll(screenshotsDir, 0755); err != nil {
+		return fmt.Errorf("error al crear directorio de screenshots:\n%w", err)
+	}
+
+	// Tomar screenshot
+	screenshot, err := driver.Screenshot()
+	if err != nil {
+		return fmt.Errorf("error al tomar screenshot:\n%w", err)
+	}
+
+	// Guardar screenshot
+	path := filepath.Join(screenshotsDir, filename)
+	if err := os.WriteFile(path, screenshot, 0644); err != nil {
+		return fmt.Errorf("error al guardar screenshot:\n%w", err)
+	}
+
+	return nil
+}
+
 func procesarRegistros(driver selenium.WebDriver, recordsObtained int64, logger *log.Logger) error {
 	if recordsObtained == 0 {
 		logger.Println(errNoRegistros)
@@ -163,6 +186,15 @@ func procesarRegistros(driver selenium.WebDriver, recordsObtained int64, logger 
 
 		if err := selectElement(driver, tab, i, rowIdentifierFormat, logger); err != nil {
 			logger.Printf("%s %d:\n%v", errProcesarRegistro, i+1, err)
+
+			// Tomar screenshot del error
+			screenshotName := fmt.Sprintf("error_registro_%d_%s.png", i+1, time.Now().Format("20060102_150405"))
+			if screenshotErr := takeScreenshot(driver, screenshotName); screenshotErr != nil {
+				logger.Printf("Error al tomar screenshot del error: %v", screenshotErr)
+			} else {
+				logger.Printf("Screenshot guardado como: %s", screenshotName)
+			}
+
 			break
 		}
 
