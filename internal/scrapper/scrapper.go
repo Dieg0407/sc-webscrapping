@@ -12,97 +12,207 @@ import (
 	"github.com/tebeka/selenium/chrome"
 )
 
-const url = "https://prod2.seace.gob.pe/seacebus-uiwd-pub/buscadorPublico/buscadorPublico.xhtml"
-const startDateSelector = "tbBuscador:idFormBuscarProceso:dfechaInicio_input"
-const endDateSelector = "tbBuscador:idFormBuscarProceso:dfechaFin_input"
-const searchButtonSelector = "tbBuscador:idFormBuscarProceso:btnBuscarSelToken"
-const retrievedRowsDataContainerSelector = ".ui-paginator-current"
-const advancedSearchSelector = ".ui-fieldset-legend"
-const tableDataSelector = "tbBuscador:idFormBuscarProceso:dtProcesos_data"
-const nextPageButton = ".ui-paginator-next"
-const previousPageButton = ".ui-paginator-prev"
+const (
+	// URLs y selectores
+	url                                = "https://prod2.seace.gob.pe/seacebus-uiwd-pub/buscadorPublico/buscadorPublico.xhtml"
+	startDateSelector                  = "tbBuscador:idFormBuscarProceso:dfechaInicio_input"
+	endDateSelector                    = "tbBuscador:idFormBuscarProceso:dfechaFin_input"
+	searchButtonSelector               = "tbBuscador:idFormBuscarProceso:btnBuscarSelToken"
+	retrievedRowsDataContainerSelector = ".ui-paginator-current"
+	advancedSearchSelector             = ".ui-fieldset-legend"
+	tableDataSelector                  = "tbBuscador:idFormBuscarProceso:dtProcesos_data"
+	nextPageButton                     = ".ui-paginator-next"
+	previousPageButton                 = ".ui-paginator-prev"
+	selectionProceduresTabButton       = "/html/body/div[3]/div/div[1]/ul/li[2]"
+	selectionProceduresTabID           = "tbBuscador:tab1"
+
+	// Constantes de tiempo
+	initialWaitTime     = 2 * time.Second
+	searchWaitTime      = 10 * time.Second
+	pageLoadTimeout     = 10 * time.Second
+	elementWaitTimeout  = 30 * time.Second
+	pageNavigationDelay = 5 * time.Second
+
+	// Mensajes de error
+	errIniciarServicioSelenium = "Error al iniciar el servicio de Selenium"
+	errAbrirNavegador          = "Error al abrir el navegador"
+	errEncontrarTab            = "Error al encontrar el tab de procedimientos de selección"
+	errHacerClicTab            = "Error al hacer clic en el tab de procedimientos de selección"
+	errObtenerTab              = "Error al obtener el tab de procedimientos de selección"
+	errRellenarFechas          = "Error al rellenar las fechas"
+	errDesplazarsePagina       = "Error al desplazarse al final de la página"
+	errEncontrarFilas          = "Error al encontrar la cantidad total de filas"
+	errEsperarCargaPagina      = "Error al esperar a que la página se cargue"
+	errExtraerIdentificador    = "Error al extraer el identificador de fila"
+	errSeleccionarElemento     = "Error al seleccionar el elemento"
+	errNoRegistros             = "No se obtuvieron registros"
+	errProcesarRegistro        = "Error al procesar el registro"
+)
 
 func Start(date time.Time) {
 	logger := log.New(os.Stderr, "[scrapper] ", log.LstdFlags)
 	logger.Printf("Proceso inicializado para la fecha: %s\n", date.Format("2006-01-02"))
 
-	// Inicializar Selenium
 	service, err := selenium.NewChromeDriverService("chromedriver", 4444)
 	if err != nil {
-		logger.Printf("Error al iniciar el servicio de Selenium:\n%v", err)
+		logger.Printf("%s:\n%v", errIniciarServicioSelenium, err)
 		return
 	}
-
 	defer service.Stop()
 
 	driver, err := setupDriver()
 	if err != nil {
-		logger.Printf("Error al abrir el navegador:\n%v", err)
+		logger.Printf("%s:\n%v", errAbrirNavegador, err)
 		return
 	}
 
-	err = fillDates(driver, date)
-	if err != nil {
-		logger.Printf("Error al rellenar las fechas:\n%v", err)
+	if err := inicializarTabProcedimientos(driver, logger); err != nil {
 		return
 	}
 
-	// Esperar 10 segundos
-	time.Sleep(10 * time.Second)
-
-	// Desplazarse hasta el final de la página usando JavaScript
-	_, err = driver.ExecuteScript("window.scrollTo(0, document.body.scrollHeight);", nil)
+	tab, err := getSelectionProcessTab(driver)
 	if err != nil {
-		logger.Printf("Error al desplazarse al final: %v", err)
+		logger.Printf("%s:\n%v", errObtenerTab, err)
 		return
 	}
 
-	recordsObtained, err := findTotalAmountOfRows(driver)
-	if err != nil {
-		logger.Printf("Error al encontrar la cantidad total de filas:\n%v", err)
+	if err := realizarBusqueda(driver, tab, date, logger); err != nil {
 		return
+	}
+
+	tab, err = getSelectionProcessTab(driver)
+	if err != nil {
+		logger.Printf("%s:\n%v", errObtenerTab, err)
+		return
+	}
+
+	recordsObtained, err := findTotalAmountOfRows(tab)
+	if err != nil {
+		logger.Printf("%s:\n%v", errEncontrarFilas, err)
+		return
+	}
+
+	if err := procesarRegistros(driver, recordsObtained, logger); err != nil {
+		return
+	}
+
+	logger.Println("Proceso finalizado exitosamente")
+}
+
+func inicializarTabProcedimientos(driver selenium.WebDriver, logger *log.Logger) error {
+	button, err := driver.FindElement(selenium.ByXPATH, selectionProceduresTabButton)
+	if err != nil {
+		logger.Printf("%s:\n%v", errEncontrarTab, err)
+		return err
+	}
+
+	if err := button.Click(); err != nil {
+		logger.Printf("%s:\n%v", errHacerClicTab, err)
+		return err
+	}
+
+	time.Sleep(initialWaitTime)
+	return nil
+}
+
+func realizarBusqueda(driver selenium.WebDriver, tab selenium.WebElement, date time.Time, logger *log.Logger) error {
+	if err := fillDates(tab, date); err != nil {
+		logger.Printf("%s:\n%v", errRellenarFechas, err)
+		return err
+	}
+
+	time.Sleep(searchWaitTime)
+
+	if _, err := driver.ExecuteScript("window.scrollTo(0, document.body.scrollHeight);", nil); err != nil {
+		logger.Printf("%s:\n%v", errDesplazarsePagina, err)
+		return err
+	}
+
+	return nil
+}
+
+func procesarRegistros(driver selenium.WebDriver, recordsObtained int64, logger *log.Logger) error {
+	if recordsObtained == 0 {
+		logger.Println(errNoRegistros)
+		return nil
 	}
 
 	logger.Printf("Cantidad total de filas obtenidas: %d\n", recordsObtained)
 
-	if recordsObtained == 0 {
-		logger.Printf("No se obtuvieron registros\n")
-		return
-	}
-
-	err = driver.WaitWithTimeout(func(wd selenium.WebDriver) (bool, error) {
-		_, err := driver.FindElement(selenium.ByID, tableDataSelector)
-		if err != nil {
-			return false, err
-		}
-		return true, nil
-	}, 10*time.Second)
-
-	if err != nil {
-		logger.Printf("Error al esperar a que la página se cargue:\n%v", err)
-		return
+	if err := waitForTableToLoad(driver); err != nil {
+		logger.Printf("%s:\n%v", errEsperarCargaPagina, err)
+		return err
 	}
 
 	rowIdentifierFormat, err := extractRowIdentifierFormat(driver)
 	if err != nil {
-		logger.Printf("Error al extraer el identificador de fila:\n%v", err)
-		return
+		logger.Printf("%s:\n%v", errExtraerIdentificador, err)
+		return err
 	}
 	logger.Printf("Formato de identificador de fila extraído: %s\n", rowIdentifierFormat)
 
 	printHeader()
 	for i := 0; i < int(recordsObtained); i++ {
-		logger.Println("Procesando registro: ", i+1)
-		err = selectElement(driver, i, rowIdentifierFormat, logger)
+		logger.Printf("Procesando registro %d de %d\n", i+1, recordsObtained)
+
+		tab, err := getSelectionProcessTab(driver)
 		if err != nil {
-			logger.Printf("Error al seleccionar el elemento:\n%v", err)
+			logger.Printf("%s:\n%v", errObtenerTab, err)
+			return err
+		}
+
+		if err := selectElement(driver, tab, i, rowIdentifierFormat, logger); err != nil {
+			logger.Printf("%s %d:\n%v", errProcesarRegistro, i+1, err)
 			break
 		}
 
-		logger.Println("Registro procesado correctamente")
+		logger.Printf("Registro %d procesado correctamente\n", i+1)
 	}
 
-	logger.Println("Proceso finalizado")
+	return nil
+}
+
+func waitForTableToLoad(driver selenium.WebDriver) error {
+	return driver.WaitWithTimeout(func(wd selenium.WebDriver) (bool, error) {
+		_, err := wd.FindElement(selenium.ByID, tableDataSelector)
+		return err == nil, nil
+	}, pageLoadTimeout)
+}
+
+func getSelectionProcessTab(driver selenium.WebDriver) (selenium.WebElement, error) {
+	// Esperar a que el tab esté presente y sea interactivo
+	err := driver.WaitWithTimeout(func(wd selenium.WebDriver) (bool, error) {
+		// Intentar encontrar el tab
+		tab, err := wd.FindElement(selenium.ByID, selectionProceduresTabID)
+		if err != nil {
+			return false, nil // No es un error, solo que aún no está disponible
+		}
+
+		// Verificar si el elemento es visible y habilitado
+		visible, err := tab.IsDisplayed()
+		if err != nil || !visible {
+			return false, nil
+		}
+
+		enabled, err := tab.IsEnabled()
+		if err != nil || !enabled {
+			return false, nil
+		}
+
+		return true, nil
+	}, elementWaitTimeout)
+
+	if err != nil {
+		return nil, fmt.Errorf("timeout esperando el tab de procedimientos de selección:\n%w", err)
+	}
+
+	// Una vez que sabemos que el elemento está disponible, lo obtenemos
+	tab, err := driver.FindElement(selenium.ByID, selectionProceduresTabID)
+	if err != nil {
+		return nil, fmt.Errorf("no se pudo encontrar el formulario de procedimientos de selección:\n%w", err)
+	}
+
+	return tab, nil
 }
 
 func setupDriver() (selenium.WebDriver, error) {
@@ -128,8 +238,8 @@ func setupDriver() (selenium.WebDriver, error) {
 	return driver, nil
 }
 
-func fillDates(driver selenium.WebDriver, date time.Time) error {
-	advancedSearchButton, err := driver.FindElement(selenium.ByCSSSelector, advancedSearchSelector)
+func fillDates(tab selenium.WebElement, date time.Time) error {
+	advancedSearchButton, err := tab.FindElement(selenium.ByCSSSelector, advancedSearchSelector)
 	if err != nil {
 		return fmt.Errorf("no se pudo obtener el botón de búsqueda avanzada:\n%w", err)
 	}
@@ -141,7 +251,7 @@ func fillDates(driver selenium.WebDriver, date time.Time) error {
 
 	time.Sleep(2 * time.Second)
 	formattedDate := date.Format("02/01/2006")
-	startDateSelector, err := driver.FindElement(selenium.ByID, startDateSelector)
+	startDateSelector, err := tab.FindElement(selenium.ByID, startDateSelector)
 	if err != nil {
 		return fmt.Errorf("no se pudo obtener el selector de fecha de inicio:\n%w", err)
 	}
@@ -151,7 +261,7 @@ func fillDates(driver selenium.WebDriver, date time.Time) error {
 	}
 
 	time.Sleep(2 * time.Second)
-	endDateSelector, err := driver.FindElement(selenium.ByID, endDateSelector)
+	endDateSelector, err := tab.FindElement(selenium.ByID, endDateSelector)
 	if err != nil {
 		return fmt.Errorf("no se pudo obtener el selector de fecha de fin:\n%w", err)
 	}
@@ -160,7 +270,7 @@ func fillDates(driver selenium.WebDriver, date time.Time) error {
 		return fmt.Errorf("no se pudo establecer el valor de la fecha de fin:\n%w", err)
 	}
 
-	button, err := driver.FindElement(selenium.ByID, searchButtonSelector)
+	button, err := tab.FindElement(selenium.ByID, searchButtonSelector)
 	if err != nil {
 		return fmt.Errorf("no se pudo obtener el botón de búsqueda:\n%w", err)
 	}
@@ -172,8 +282,8 @@ func fillDates(driver selenium.WebDriver, date time.Time) error {
 	return nil
 }
 
-func findTotalAmountOfRows(driver selenium.WebDriver) (int64, error) {
-	retrievedRowsData, err := driver.FindElement(selenium.ByCSSSelector, retrievedRowsDataContainerSelector)
+func findTotalAmountOfRows(tab selenium.WebElement) (int64, error) {
+	retrievedRowsData, err := tab.FindElement(selenium.ByCSSSelector, retrievedRowsDataContainerSelector)
 	if err != nil {
 		return 0, fmt.Errorf("no se pudo obtener el contenedor de filas recuperadas:\n%s", err)
 	}
@@ -238,22 +348,8 @@ func extractRowIdentifierFormat(driver selenium.WebDriver) (string, error) {
 	return strings.Replace(attribute, ":0:", ":%d:", 1), nil
 }
 
-func takeScreenshot(driver selenium.WebDriver, path string) error {
-	screenshot, err := driver.Screenshot()
-	if err != nil {
-		return fmt.Errorf("el controlador no pudo tomar la captura de pantalla:\n%s", err)
-	}
-
-	err = os.WriteFile(path, screenshot, 0644)
-	if err != nil {
-		return fmt.Errorf("error al escribir la captura de pantalla: \n%s", err)
-	}
-
-	return nil
-}
-
-func selectElement(driver selenium.WebDriver, id int, rowIdentifierFormat string, logger *log.Logger) error {
-	err := goToPage(driver, calculatePageNumber(id), logger)
+func selectElement(driver selenium.WebDriver, tab selenium.WebElement, id int, rowIdentifierFormat string, logger *log.Logger) error {
+	err := goToPage(driver, tab, calculatePageNumber(id), logger)
 	if err != nil {
 		return fmt.Errorf("error al ir a la página %d:\n%s", calculatePageNumber(id), err)
 	}
@@ -323,8 +419,8 @@ func calculatePageNumber(id int) int {
 	return page
 }
 
-func goToPage(driver selenium.WebDriver, page int, logger *log.Logger) error {
-	paginator, err := driver.FindElements(selenium.ByCSSSelector, ".ui-paginator-page")
+func goToPage(driver selenium.WebDriver, tab selenium.WebElement, page int, logger *log.Logger) error {
+	paginator, err := tab.FindElements(selenium.ByCSSSelector, ".ui-paginator-page")
 	if err != nil {
 		return fmt.Errorf("error al obtener los elementos del paginador:\n%s", err)
 	}
@@ -358,7 +454,7 @@ func goToPage(driver selenium.WebDriver, page int, logger *log.Logger) error {
 	if activePage < page {
 		// Avanzar
 		logger.Println("avanzando")
-		err = clickNextPage(driver)
+		err = clickNextPage(tab)
 		if err != nil {
 			return fmt.Errorf("error al hacer clic en el botón de siguiente página:\n%s", err)
 		}
@@ -366,19 +462,19 @@ func goToPage(driver selenium.WebDriver, page int, logger *log.Logger) error {
 		if err != nil {
 			return err
 		}
-		return goToPage(driver, page, logger)
+		return goToPage(driver, tab, page, logger)
 	}
 
 	logger.Println("retrocediendo")
-	err = clickPreviousPage(driver)
+	err = clickPreviousPage(tab)
 	if err != nil {
 		return fmt.Errorf("error al hacer clic en el botón de página anterior:\n%s", err)
 	}
-	return goToPage(driver, page, logger)
+	return goToPage(driver, tab, page, logger)
 }
 
-func clickNextPage(driver selenium.WebDriver) error {
-	nextPage, err := driver.FindElement(selenium.ByCSSSelector, nextPageButton)
+func clickNextPage(tab selenium.WebElement) error {
+	nextPage, err := tab.FindElement(selenium.ByCSSSelector, nextPageButton)
 	if err != nil {
 		return fmt.Errorf("error al obtener el botón de siguiente página:\n%s", err)
 	}
@@ -400,8 +496,8 @@ func clickNextPage(driver selenium.WebDriver) error {
 	return nil
 }
 
-func clickPreviousPage(driver selenium.WebDriver) error {
-	previousPage, err := driver.FindElement(selenium.ByCSSSelector, previousPageButton)
+func clickPreviousPage(tab selenium.WebElement) error {
+	previousPage, err := tab.FindElement(selenium.ByCSSSelector, previousPageButton)
 	if err != nil {
 		return fmt.Errorf("error al obtener el botón de página anterior:\n%s", err)
 	}
