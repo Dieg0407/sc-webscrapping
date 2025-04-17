@@ -424,7 +424,7 @@ func findActiveButton(driver selenium.WebDriver, buttonSelector string) (seleniu
 
 	for _, button := range buttons {
 		classNames, err := button.GetAttribute("class")
-		if err != nil && err.Error() != "stale element not found" {
+		if err != nil {
 			return nil, fmt.Errorf("error al obtener los nombres de clase:\n%s", err)
 		}
 		if !strings.Contains(classNames, "ui-state-disabled") {
