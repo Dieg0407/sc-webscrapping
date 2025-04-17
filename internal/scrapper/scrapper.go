@@ -427,7 +427,14 @@ func selectElement(driver selenium.WebDriver, tab selenium.WebElement, id int, r
 }
 
 func waitForDetailsPageToLoad(wd selenium.WebDriver) (bool, error) {
-	_, err := wd.FindElement(selenium.ByXPATH, "//button[span[text()='Regresar']]")
+	err := wd.WaitWithTimeout(func(driver selenium.WebDriver) (bool, error) {
+		_, err := driver.FindElement(selenium.ByXPATH, "//button[span[text()='Regresar']]")
+		if err != nil {
+			return false, nil
+		}
+		return true, nil
+	}, elementWaitTimeout)
+
 	if err != nil {
 		return false, fmt.Errorf("error al obtener la página de detalles:\n%s", err)
 	}
@@ -436,7 +443,14 @@ func waitForDetailsPageToLoad(wd selenium.WebDriver) (bool, error) {
 }
 
 func waitForMainPageToLoad(wd selenium.WebDriver) (bool, error) {
-	_, err := wd.FindElement(selenium.ByCSSSelector, advancedSearchSelector)
+	err := wd.WaitWithTimeout(func(driver selenium.WebDriver) (bool, error) {
+		_, err := driver.FindElement(selenium.ByCSSSelector, advancedSearchSelector)
+		if err != nil {
+			return false, nil
+		}
+		return true, nil
+	}, elementWaitTimeout)
+
 	if err != nil {
 		return false, fmt.Errorf("error al obtener la página principal:\n%s", err)
 	}
